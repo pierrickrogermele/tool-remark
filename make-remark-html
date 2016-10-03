@@ -1,0 +1,145 @@
+#!/bin/bash
+
+####################
+# GLOBAL VARIABLES #
+####################
+
+TITLE=
+SUBTITLE=
+INPUT_FILE=
+OUTPUT_FILE=
+
+##############
+# PRINT HELP #
+##############
+
+function print_help {
+	echo "Usage: make-remark-html -t title -f file.md"
+	echo
+	echo "Create HTML file for remark markdown-driven slideshow."
+	echo
+	echo "Options:"
+	echo "   -h, --help         Print this help message."
+	echo "   -i, --input        Set path to Markdown input file."
+	echo "   -o, --output       Set path to HTML output file."
+	echo "   -t, --title        Set presentation title."
+	echo "   -s, --subtitle     Set presentation subtitle."
+}
+
+#########
+# ERROR #
+#########
+
+function error {
+
+	local msg=$1
+
+	echo "ERROR: $msg" >&2
+
+	exit 1
+}
+
+#############
+# READ ARGS #
+#############
+
+function read_args {
+	
+	# Read options
+	while true ; do
+		case $1 in
+			-h|--help)          print_help ; exit 0 ;;
+			-i|--input)         INPUT_FILE=$2 ; shift ;;
+			-o|--output)        OUTPUT_FILE=$2 ; shift ;;
+			-t|--title)         TITLE=$2 ; shift ;;
+			-s|--subtitle)      SUBTITLE=$2 ; shift ;;
+			-) error "Illegal option $1." ;;
+			--) error "Illegal option $1." ;;
+			--*) error "Illegal option $1." ;;
+			-?) error "Unknown option $1." ;;
+			-[^-]*) split_opt=$(echo $1 | sed 's/^-//' | sed 's/\([a-zA-Z]\)/ -\1/g') ; set -- $1$split_opt "${@:2}" ;;
+			*) break
+		esac
+		shift
+	done
+	shift $((OPTIND - 1))
+
+	# Check arguments
+	test -n "$INPUT_FILE" || error "You must specify a Markdown input file using -i command line flag."
+	test -n "$OUTPUT_FILE" || error "You must specify an HTML output file using -o command line flag."
+}
+
+#################
+# GENERATE HTML #
+#################
+
+function generate_html {
+
+	# Write first part
+	cat >$OUTPUT_FILE <<EOF
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>$TITLE</title>
+    <meta charset="utf-8">
+    <style>
+      @import url(https://fonts.googleapis.com/css?family=Yanone+Kaffeesatz);
+      @import url(https://fonts.googleapis.com/css?family=Droid+Serif:400,700,400italic);
+      @import url(https://fonts.googleapis.com/css?family=Ubuntu+Mono:400,700,400italic);
+
+      body { font-family: 'Droid Serif'; }
+      h1, h2, h3 {
+        font-family: 'Yanone Kaffeesatz';
+        font-weight: normal;
+      }
+      .remark-code, .remark-inline-code { font-family: 'Ubuntu Mono'; }
+    </style>
+  </head>
+  <body>
+    <textarea id="source">
+
+class: center, middle
+
+# $TITLE
+
+$SUBTITLE
+
+EOF
+
+	# Write Markdown text
+	grep -v '^%' $INPUT_FILE | sed 's/^#\s*/---\
+&/' >>$OUTPUT_FILE 
+
+	# Write last part
+	cat >>$OUTPUT_FILE <<EOF
+    </textarea>
+    <script src="https://gnab.github.io/remark/downloads/remark-latest.min.js">
+    </script>
+    <script>
+      var slideshow = remark.create();
+    </script>
+  </body>
+</html>
+EOF
+}
+
+#############
+# SET TITLE #
+#############
+
+function set_title {
+
+	if [ -z "$TITLE" ] ; then
+		# Try to read title and subtitle from Markdown header
+		TITLE=$(head -n 10 $INPUT_FILE | grep '^%' | sed 's/^%\s*//' | head -n 1)
+		SUBTITLE=$(head -n 10 $INPUT_FILE | grep '^%' | sed '1d' | sed 's/^%\s*//' | awk '{printf $0" - ";}' | sed 's/ - $//')
+	fi
+}
+
+########
+# MAIN #
+########
+
+read_args "$@"
+set_title
+generate_html
