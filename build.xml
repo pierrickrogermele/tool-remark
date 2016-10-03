@@ -1,0 +1,36 @@
+<!-- vi: se ft=ant : -->
+<project name="remark" default="all">
+
+	<dirname property="remark.dir" file="${ant.file.remark}"/>
+
+	<include file="../ant-lib/contrib.xml" as="ant.contrib"/>
+
+	<!--~~~~~~~~~~~~
+	~ PANDOC MACRO ~
+	~~~~~~~~~~~~~-->
+
+	<macrodef name="remark">
+		<attribute name="input"/>
+		<attribute name="output"/>
+
+		<sequential>
+
+			<!-- Run command -->
+			<exec executable="${remark.dir}/make-remark-html" failonerror="true">
+				<arg value="-i"/>
+				<arg value="@{input}"/>
+				<arg value="-o"/>
+				<arg value="@{output}"/>
+			</exec>
+		</sequential>
+	</macrodef>
+
+	<!--~~~~~~~~~~~~~
+	~ EMPTY TARGETS ~
+	~~~~~~~~~~~~~~-->
+
+	<target name="all"/>
+	<target name="clean"/>
+	<target name="test"/>
+
+</project>
